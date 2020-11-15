@@ -1,5 +1,6 @@
 package com.ugd9_x_yyyy.Views;
 
+import android.app.ProgressDialog;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -11,13 +12,12 @@ import android.view.ViewGroup;
 import android.widget.SearchView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -40,7 +40,6 @@ import static com.android.volley.Request.Method.GET;
 
 public class ViewsBuku extends Fragment{
 
-    private RecyclerView recyclerView;
     private AdapterBuku adapter;
     private List<Buku> listBuku;
     private View view;
@@ -49,9 +48,8 @@ public class ViewsBuku extends Fragment{
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         view = inflater.inflate(R.layout.fragment_views_buku, container, false);
-        setAdapter();
-        getBuku();
 
+        loadDaftarBuku();
         return view;
     }
 
@@ -62,7 +60,7 @@ public class ViewsBuku extends Fragment{
     }
 
     @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+    public void onCreateOptionsMenu(@NonNull Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.menu_bar_buku, menu);
         super.onCreateOptionsMenu(menu, inflater);
 
@@ -83,7 +81,7 @@ public class ViewsBuku extends Fragment{
     }
 
     @Override
-    public void onPrepareOptionsMenu(Menu menu) {
+    public void onPrepareOptionsMenu(@NonNull Menu menu) {
         super.onPrepareOptionsMenu(menu);
         menu.findItem(R.id.btnSearch).setVisible(true);
         menu.findItem(R.id.btnAdd).setVisible(true);
@@ -107,30 +105,56 @@ public class ViewsBuku extends Fragment{
         return super.onOptionsItemSelected(item);
     }
 
+    public void loadDaftarBuku(){
+        setAdapter();
+        getBuku();
+    }
+
     public void setAdapter(){
         getActivity().setTitle("Data Buku");
+        /*Buat tampilan untuk adapter jika potrait menampilkan 2 data dalam 1 baris,
+        sedangakan untuk landscape 4 data dalam 1 baris*/
+
         listBuku = new ArrayList<Buku>();
-        recyclerView = view.findViewById(R.id.recycler_view);
-        adapter = new AdapterBuku(view.getContext(), listBuku);
-        GridLayoutManager gridLayoutManager;
+        RecyclerView recyclerView = view.findViewById(R.id.recycler_view);
+        adapter = new AdapterBuku(view.getContext(), listBuku, new AdapterBuku.deleteItemListener() {
+            @Override
+            public void deleteItem(Boolean delete) {
+                if (delete){
+                    loadDaftarBuku();
+                }
+            }
+        });
+
+        GridLayoutManager layoutManager;
         int orientation = getResources().getConfiguration().orientation;
         if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            gridLayoutManager = new GridLayoutManager(view.getContext(),4);
+            layoutManager = new GridLayoutManager(view.getContext(),4);
         } else {
-            gridLayoutManager = new GridLayoutManager(view.getContext(),2);
+            layoutManager = new GridLayoutManager(view.getContext(),2);
         }
-        recyclerView.setLayoutManager(gridLayoutManager);
+        recyclerView.setLayoutManager(layoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(adapter);
     }
 
     public void getBuku() {
+        //Tambahkan tampil buku disini
         RequestQueue queue = Volley.newRequestQueue(view.getContext());
 
-        final JsonObjectRequest stringRequest = new JsonObjectRequest(GET, BukuAPI.URL_SELECT
-                , null, new Response.Listener<JSONObject>() {
+        final ProgressDialog progressDialog;
+        progressDialog = new ProgressDialog(view.getContext());
+        progressDialog.setMessage("loading....");
+        progressDialog.setTitle("Menampilkan data buku");
+        progressDialog.setProgressStyle(android.app.ProgressDialog.STYLE_SPINNER);
+        progressDialog.show();
+
+        final JsonObjectRequest stringRequest = new JsonObjectRequest(GET, BukuAPI.URL_SELECT,
+                null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
+                //Disini bagian jika response jaringan berhasil tidak terdapat ganguan/error
+                progressDialog.dismiss();
                 try {
                     JSONArray jsonArray = response.getJSONArray("dataBuku");
 
@@ -147,24 +171,28 @@ public class ViewsBuku extends Fragment{
                         Double harga        = Double.parseDouble(jsonObject.optString("harga"));
                         String gambar       = jsonObject.optString("gambar");
 
+                        //Membuat objek buku
+                        Buku buku = new Buku(idBuku, namaBuku, pengarang, harga, gambar);
+
                         //Menambahkan objek buku ke listBuku
-                        listBuku.add(new Buku(idBuku, namaBuku, pengarang, harga, gambar));
+                        listBuku.add(buku);
                     }
                     adapter.notifyDataSetChanged();
                 }catch (JSONException e){
                     e.printStackTrace();
                 }
-                Toast.makeText(view.getContext(), response.optString("message"),
-                        Toast.LENGTH_SHORT).show();
+                Toast.makeText(view.getContext(), response.optString("message"), Toast.LENGTH_SHORT).show();
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Toast.makeText(view.getContext(), error.getMessage(),
-                        Toast.LENGTH_SHORT).show();
+                //Disini bagian jika response jaringan terdapat ganguan/error
+                progressDialog.dismiss();
+                Toast.makeText(view.getContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
 
+        //Disini proses penambahan request yang sudah kita buat ke reuest queue yang sudah dideklarasi
         queue.add(stringRequest);
     }
 }

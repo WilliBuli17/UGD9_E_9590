@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static com.android.volley.Request.Method.POST;
+import static com.android.volley.Request.Method.PUT;
 
 
 public class TambahEditMahasiswa extends Fragment {
@@ -280,7 +281,7 @@ public class TambahEditMahasiswa extends Fragment {
         progressDialog.show();
 
         //Memulai membuat permintaan request menghapus data ke jaringan
-        StringRequest  stringRequest = new StringRequest(POST, MahasiswaAPI.URL_UPDATE + npm, new Response.Listener<String>() {
+        StringRequest  stringRequest = new StringRequest(PUT, MahasiswaAPI.URL_UPDATE + npm, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
                 //Disini bagian jika response jaringan berhasil tidak terdapat ganguan/error

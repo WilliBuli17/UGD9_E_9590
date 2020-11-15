@@ -1,10 +1,10 @@
 package com.ugd9_x_yyyy.Views;
 
+import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -13,6 +13,7 @@ import android.widget.CompoundButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DefaultItemAnimator;
@@ -73,12 +74,12 @@ public class ViewsCart extends Fragment{
     }
 
     @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
     }
 
     @Override
-    public void onPrepareOptionsMenu(Menu menu) {
+    public void onPrepareOptionsMenu(@NonNull Menu menu) {
         super.onPrepareOptionsMenu(menu);
         if(menu.findItem(R.id.btnSearch) != null)
             menu.findItem(R.id.btnSearch).setVisible(false);
@@ -166,12 +167,22 @@ public class ViewsCart extends Fragment{
     }
 
     public void getTransaksi() {
-        final RequestQueue queue = Volley.newRequestQueue(view.getContext());
+        //Tambahkan tampil transaksi buku disini
+        RequestQueue queue = Volley.newRequestQueue(view.getContext());
 
-        final JsonObjectRequest stringRequest = new JsonObjectRequest(GET, TransaksiBukuAPI.URL_SELECT
-                , null, new Response.Listener<JSONObject>() {
+        final ProgressDialog progressDialog;
+        progressDialog = new ProgressDialog(view.getContext());
+        progressDialog.setMessage("loading....");
+        progressDialog.setTitle("Menampilkan data transaksi buku");
+        progressDialog.setProgressStyle(android.app.ProgressDialog.STYLE_SPINNER);
+        progressDialog.show();
+
+        final JsonObjectRequest stringRequest = new JsonObjectRequest(GET, TransaksiBukuAPI.URL_SELECT,
+                null, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
+                //Disini bagian jika response jaringan berhasil tidak terdapat ganguan/error
+                progressDialog.dismiss();
                 try {
                     JSONArray jsonArray = response.getJSONArray("transaksibuku");
 
@@ -179,56 +190,63 @@ public class ViewsCart extends Fragment{
                         transaksiBukuList.clear();
 
                     for (int i = 0; i < jsonArray.length(); i++) {
-                        JSONObject jsonObject = (JSONObject) jsonArray.get(i);
+                        //Mengubah data jsonArray tertentu menjadi json Object
+                        JSONObject jsonObjectTR = (JSONObject) jsonArray.get(i);
 
-                        String noTransaksi  = jsonObject.optString("noTransaksi");
-                        int idToko          = Integer.parseInt(jsonObject.optString("idToko"));
-                        String tglTransaksi = jsonObject.optString("tglTransaksi");
-                        Double totalBiaya   = Double.parseDouble(jsonObject.optString("totalBiaya"));
-                        String namaToko      = jsonObject.optString("namaToko");
+                        String noTransaksi  = jsonObjectTR.optString("noTransaksi");
+                        int idToko          = Integer.parseInt(jsonObjectTR.optString("idToko"));
+                        Double totalBiaya   = Double.parseDouble(jsonObjectTR.optString("totalBiaya"));
+                        String tglTransaksi = jsonObjectTR.optString("tglTransaksi");
+                        String namaToko     = jsonObjectTR.optString("namaToko");
 
-                        JSONArray jsonArrays = jsonObject.optJSONArray("dtbuku");
-
+                        JSONArray jsonArrays    = jsonObjectTR.optJSONArray("dtbuku");
                         List<DTBuku> listDTBuku = new ArrayList<>();
 
                         for (int j = 0; j < jsonArrays.length(); j++) {
-                            JSONObject jsonObjects = (JSONObject) jsonArrays.get(j);
+                            //Mengubah data jsonArray tertentu menjadi json Object
+                            JSONObject jsonObjectDT = (JSONObject) jsonArrays.get(j);
 
-                            String noTransaksis  = jsonObjects.optString("noTransaksi");
-                            int idBuku           = Integer.parseInt(jsonObjects.optString("idBuku"));
-                            String namaBuku      = jsonObjects.optString("namaBuku");
-                            Double harga         = Double.parseDouble(jsonObjects.optString("harga"));
-                            int jumlah           = Integer.parseInt(jsonObjects.optString("jumlah"));
-                            String gambar        = jsonObjects.optString("gambar");
+                            String noTransaksis  = jsonObjectDT.optString("noTransaksi");
+                            int idBuku           = Integer.parseInt(jsonObjectDT.optString("idBuku"));
+                            int jumlah           = Integer.parseInt(jsonObjectDT.optString("jumlah"));
+                            String namaBuku      = jsonObjectDT.optString("namaBuku");
+                            Double harga         = Double.parseDouble(jsonObjectDT.optString("harga"));
+                            String gambar        = jsonObjectDT.optString("gambar");
 
-                            listDTBuku.add(
-                                    new DTBuku(idBuku, noTransaksis, jumlah, namaBuku, harga, gambar));
+                            //Membuat Objek DTbuku
+                            DTBuku dtBuku = new DTBuku(idBuku, noTransaksis, jumlah, namaBuku, harga, gambar);
+
+                            //Menambahkan objek buku ke listDTBuku
+                            listDTBuku.add(dtBuku);
                         }
+                        //Membuat Objek TransaksiBuku
+                        TransaksiBuku transaksiBuku = new TransaksiBuku(noTransaksi, idToko, tglTransaksi, totalBiaya, namaToko, listDTBuku);
 
-                        transaksiBukuList.add(
-                                new TransaksiBuku(noTransaksi, idToko, tglTransaksi, totalBiaya, namaToko, listDTBuku));
+                        //Menambahkan objek buku ke listDTBuku
+                        transaksiBukuList.add(transaksiBuku);
                     }
                     adapter.notifyDataSetChanged();
                 }catch (JSONException e){
                     e.printStackTrace();
                 }
+                Toast.makeText(view.getContext(), response.optString("message"), Toast.LENGTH_SHORT).show();
 
-                Toast.makeText(view.getContext(), response.optString("message"),
-                        Toast.LENGTH_SHORT).show();
-
-                if(transaksiBukuList.isEmpty())
+                if(transaksiBukuList.isEmpty()){
                     panelCheckBox.setVisibility(View.GONE);
-                else
+                } else{
                     panelCheckBox.setVisibility(View.VISIBLE);
+                }
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Toast.makeText(view.getContext(), error.getMessage(),
-                        Toast.LENGTH_SHORT).show();
+                //Disini bagian jika response jaringan terdapat ganguan/error
+                progressDialog.dismiss();
+                Toast.makeText(view.getContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
 
+        //Disini proses penambahan request yang sudah kita buat ke reuest queue yang sudah dideklarasi
         queue.add(stringRequest);
     }
 }

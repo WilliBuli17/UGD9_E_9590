@@ -106,19 +106,25 @@ public class ViewsMahasiswa extends Fragment {
         return super.onOptionsItemSelected(item);
     }
 
+    public void loadDaftarMahasiswa(){
+        setAdapter();
+        getMahasiswa();
+    }
+
     public void setAdapter(){
         getActivity().setTitle("Data Mahasiswa");
         listMahasiswa = new ArrayList<Mahasiswa>();
         recyclerView = view.findViewById(R.id.recycler_view);
-        adapter = new AdapterMahasiswa(view.getContext(), listMahasiswa);
-        int orientation = getResources().getConfiguration().orientation;
-        if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            GridLayoutManager gridLayoutManager = new GridLayoutManager(view.getContext(),2);
-            recyclerView.setLayoutManager(gridLayoutManager);
-        } else {
-            RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(view.getContext());
-            recyclerView.setLayoutManager(layoutManager);
-        }
+        adapter = new AdapterMahasiswa(view.getContext(), listMahasiswa, new AdapterMahasiswa.deleteItemListener() {
+            @Override
+            public void deleteItem(Boolean delete) {
+                if(delete){
+                    loadDaftarMahasiswa();
+                }
+            }
+        });
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(view.getContext());
+        recyclerView.setLayoutManager(layoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
         recyclerView.setAdapter(adapter);
     }

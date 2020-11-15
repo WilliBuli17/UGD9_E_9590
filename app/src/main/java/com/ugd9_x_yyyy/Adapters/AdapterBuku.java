@@ -43,6 +43,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.android.volley.Request.Method.DELETE;
 import static com.android.volley.Request.Method.POST;
 
 public class AdapterBuku extends RecyclerView.Adapter<AdapterBuku.adapterBukuViewHolder> {
@@ -51,11 +52,18 @@ public class AdapterBuku extends RecyclerView.Adapter<AdapterBuku.adapterBukuVie
     private List<Buku> bukuListFiltered;
     private Context context;
     private View view;
+    private AdapterBuku.deleteItemListener mListener;
 
-    public AdapterBuku(Context context, List<Buku> bukuList) {
+    public AdapterBuku(Context context, List<Buku> bukuList,
+                       AdapterBuku.deleteItemListener mListener) {
         this.context            = context;
         this.bukuList           = bukuList;
         this.bukuListFiltered   = bukuList;
+        this.mListener          = mListener;
+    }
+
+    public interface deleteItemListener {
+        void deleteItem( Boolean delete);
     }
 
     @NonNull
@@ -177,24 +185,31 @@ public class AdapterBuku extends RecyclerView.Adapter<AdapterBuku.adapterBukuVie
     }
 
     public void deleteBuku(int idBuku){
-        RequestQueue queue = Volley.newRequestQueue(context);
+        //Tambahkan hapus buku disini
+        RequestQueue queue = Volley.newRequestQueue(view.getContext());
 
         final ProgressDialog progressDialog;
-        progressDialog = new ProgressDialog(context);
+        progressDialog = new ProgressDialog(view.getContext());
         progressDialog.setMessage("loading....");
         progressDialog.setTitle("Menghapus data buku");
-        progressDialog.setProgressStyle(android.app.ProgressDialog.STYLE_SPINNER);
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         progressDialog.show();
-        //Meminta
-        StringRequest stringRequest = new StringRequest(POST, BukuAPI.URL_DELETE+idBuku, new Response.Listener<String>() {
+
+        //Memulai membuat permintaan request menghapus data ke jaringan
+        StringRequest stringRequest = new StringRequest(DELETE, BukuAPI.URL_DELETE + idBuku, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
+                //Disini bagian jika response jaringan berhasil tidak terdapat ganguan/error
                 progressDialog.dismiss();
                 try {
+                    //Mengubah response string menjadi object
                     JSONObject obj = new JSONObject(response);
+
+                    //obj.getString("message") digunakan untuk mengambil pesan message dari response
                     Toast.makeText(context, obj.getString("message"), Toast.LENGTH_SHORT).show();
+
                     notifyDataSetChanged();
-                    loadFragment(new ViewsBuku());
+                    mListener.deleteItem(true);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -202,11 +217,13 @@ public class AdapterBuku extends RecyclerView.Adapter<AdapterBuku.adapterBukuVie
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
+                //Disini bagian jika response jaringan terdapat ganguan/error
                 progressDialog.dismiss();
                 Toast.makeText(context, error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
 
+        //Disini proses penambahan request yang sudah kita buat ke reuest queue yang sudah dideklarasi
         queue.add(stringRequest);
     }
 }
